@@ -4,7 +4,7 @@
 3.Image Processing\
 |---3.1 高斯模糊化 Gaussian Filter\
 |---3.2 索伯運算子 Sobel (邊緣檢測)\
-4.Deep Learning\ 
+4.Deep Learning \ 
 |---LeNet5\
 |---VGG16\
 |---ResNet18
