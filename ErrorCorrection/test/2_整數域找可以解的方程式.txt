@@ -1,0 +1,23 @@
+import numpy as np
+from itertools import product
+
+def solution(a):
+    b = (a.roots).tolist()
+    ans1 = all(x%1 == 0 for x in b) # 確認每個元素是不是整數，將所有bool做and,要等於True
+    ans2 = all(x > 0 for x in b) # 確認每個元素是不是，將所有bool做and,要等於True
+    return (not (ans1 and ans2)), b
+
+# ------------------ main ------------------ #    
+start_flag = True   
+c = [0,-7] # 假設質數為7
+count = 0
+
+set_mod = list(product(c,c,c)) # 所有有可能的set
+A_initial = np.poly1d([1,4,2]) 
+
+while(start_flag and (count < pow(2,len(A_initial)+1))):
+    A =  A_initial + set_mod[count]
+    start_flag, answer = solution(A)
+    count+=1
+
+print(answer)

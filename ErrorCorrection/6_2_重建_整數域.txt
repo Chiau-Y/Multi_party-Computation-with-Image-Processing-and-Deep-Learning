@@ -1,0 +1,78 @@
+import cv2
+import time
+import math
+import random
+import numpy as np
+from random import sample
+import matplotlib.pyplot as plt
+
+
+start_time = time.time()    
+
+#------------------------------------ Image to Array ----------------------------------#
+def Image2Array(img_party):  
+    
+    img_gray = np.zeros([img_size[0], img_size[1]], dtype='float32')
+    
+    for i in range (img_size[0]):       
+        for j in range(img_size[1]): 
+            img_gray[i][j] = int(img_party[:,:,0][i][j]) + int(img_party[:,:,1][i][j]) + int(img_party[:,:,2][i][j])
+    
+    return img_gray 
+
+
+#------------------------------------ Reconstruction ----------------------------------# 
+def Construction(share1, share2, share3, share4, share5, share6):
+
+    img_result2 = np.zeros([img_size[0], img_size[1]], dtype='uint32') 
+    img_result6 = np.zeros([img_size[0], img_size[1]], dtype='uint32')
+    c = [6, -15, 20, -15, 6, -1]
+             
+
+
+    # return img_result12, img_result23, img_result13, img_result123
+    for i in range (img_size[0]):
+        for j in range(img_size[1]):    
+            img_result2[i][j] = ((share1[i][j]*3 + share2[i][j]*(-3) + share3[i][j])% 33292801)**(1/2)/16                         
+            img_result6[i][j] = ((share1[i][j]*c[0] + share2[i][j]*c[1] + share3[i][j]*c[2] +
+                                         share4[i][j]*c[3] + share5[i][j]*c[4] + share6[i][j]*c[5])% 33292801)**(1/2)/16                         
+  
+    return img_result2, img_result6   
+    
+#------------------------------------  Main ----------------------------------#
+if __name__ == '__main__':
+    
+    print("----------- Local -----------") 
+    party1 = np.load('./parties/ImageProcessing/Party1.npy') 
+    party2 = np.load('./parties/ImageProcessing/Party2_original.npy') 
+    party3 = np.load('./parties/ImageProcessing/Party3.npy') 
+    party4 = np.load('./parties/ImageProcessing/Party4.npy') 
+    party5 = np.load('./parties/ImageProcessing/Party5.npy') 
+    party6 = np.load('./parties/ImageProcessing/Party6_original.npy')    
+    image = cv2.imread('D:/Master_2019_2021/Muti_Party_Computation/ErrorCorrection/parties/result/Image.bmp',0)  
+    
+    img_size = np.shape (party1)
+        
+    print("Reconstruction")
+    img_size = np.shape (party1)
+    Image2, Image6 = Construction(party1,party2,party3,party4,party5,party6)   
+    
+    plt.figure(0)
+    plt.imshow(image, cmap='Greys_r') # 顯示圖片
+    plt.axis('off') # 不顯示座標軸    
+    # plt.savefig("./parties/result/o.png",bbox_inches='tight',pad_inches = 0) 
+    plt.figure(8)
+    plt.imshow(Image2, cmap='Greys_r') # 顯示圖片
+    plt.axis('off') # 不顯示座標軸
+    # plt.savefig("./parties/result/Image1and2_r.png",bbox_inches='tight',pad_inches = 0) 
+    plt.figure(9)
+    plt.imshow(Image6, cmap='Greys_r') # 顯示圖片
+    plt.axis('off') # 不顯示座標軸
+    # plt.savefig("./parties/result/Image1to6_r.png",bbox_inches='tight',pad_inches = 0) 
+
+    
+end_time = time.time()      
+print("")      
+print("Time : ",round(end_time-start_time, 2),"sec")            
+            
+

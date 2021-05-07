@@ -1,0 +1,239 @@
+import cv2
+import time
+import random
+import numpy as np
+from sympy import * 
+import numba as nb
+from numba import njit
+from collections import Counter
+from numpy.polynomial import Polynomial as P
+
+start_time = time.time()
+# ------------------------------------Subroutine------------------------------------
+def Check_n(n,t):                                                            # 設定party個數                   
+    if n < 2*t or n <= 0:
+        print("You need more parties")
+        check = 1
+    else:
+        check = 0
+    return check
+ # A矩陣
+@nb.jit(nopython=True)
+def Matrix_A(shares_err,k,t,n):                                             
+    matrix_A1, matrix_A2 = [], []
+    share = shares_err
+    k1 = k
+    for i in range (n):
+        matrix_A1.append(share[i])
+        for j in range (k-1):
+            power = 1
+            for z in range (j+1):
+                power *= (i+1)
+            matrix_A1.append(share[i]*power)   
+    for i in range (n):
+        matrix_A2.append(-1)
+        num = 0
+        for j in range (t+k):
+            power = 1
+            for z in range (j+1):
+                power *= (i+1)
+            matrix_A2.append((-1)*power) 
+    if k == 0:
+        k1 += 1
+   
+    return np.append(np.array(matrix_A1).reshape(n,k1), np.array(matrix_A2).reshape(n, t+k+1), axis=1) 
+# b矩陣
+@nb.jit(nopython=True)
+def Matrix_b(share,k,n):                                                   
+    matrix_b1 = []
+    for i in range (1,n+1):
+        power = 1
+        for j in range (k):
+            power *= i            
+        matrix_b1.append(share[i-1]*power*(-1))      
+    return np.array(matrix_b1).reshape(n,1)
+    
+def Matrix_x(matrix1,matrix2):                                             # 矩陣求解
+    # print("\n===== Square and Non-Singular Matrix=====")
+    Augmented = Matrix(np.hstack((matrix1,matrix2)))
+    A_inv = np.linalg.inv(matrix1)
+    ans = A_inv.dot(matrix2)
+    return ans
+
+def Matrix_x_Pseudo(matrix1,matrix2):                                      # 非方正矩陣求解
+    # print("\n===== Non-square Matrix =====")
+    A_inv = np.linalg.pinv(np.mat(matrix1))
+    ans = np.dot(A_inv,matrix2)   
+    return np.array(ans)
+
+@nb.jit(nopython=True)
+def Matrix_x_Singular(n,matrix_rref):                                  # 奇異矩陣求解
+    # print("\n===== Singular Matrix =====")
+    answer = []
+    count = 0
+    for i in range (n):        
+        if max(matrix_rref[n-(i+1)]) == 0:                                   # 判斷有幾列整列皆是0
+            count += 1 
+    for i in range (n):  
+        position_2 = -1    
+        sum, p = 0, 1
+        for j in range (t+2*k+1): 
+            if position_2 == -1:                                             # 判斷有沒有找到第一個1在哪個位置
+                if matrix_rref[n-(i+1)][j] == 1:                             # 判斷1在哪個位置
+                    position_2 = j                                           # 要解的未知數的位置
+                    if position_2 == (t+2*k):
+                        answer.append(matrix_rref[n-(i+1)][j+1])
+                        for z in range (count):                              # 通解的未知數全部設0，0的個數count決定
+                            answer.append(0)  
+                        count = 0      
+            else:               
+                sum += -1*matrix_rref[n-(i+1)][j]*answer[(t+2*k+1)-(j+1)]    # (j+1)+(x+1)-1 = t+2*k+1，從頭或從尾開始算
+                p += 1
+        if count == 0 and position_2 != (t+2*k):
+            sum += matrix_rref[n-(i+1)][t+2*k+1]
+            answer.append(sum)  
+    return np.array(answer).reshape(t+2*k+1,1)
+
+@nb.jit(nopython=True)
+def Reshape(matrix):                                                     # 重新排列矩陣
+    matrix_x1 = []
+    for i in range (t+2*k+1):
+        matrix_x1.append(matrix[t+2*k+1-(i+1)][0])
+    return np.array(matrix_x1).reshape(t+2*k+1,1)   
+
+def Solution(matrix,flag):                                               # 多項式求解(error)
+    solve1, solution2 = [], []
+    solve1.append(1)
+    for i in range (k):
+        solve1.append(matrix[(k-1)-i][0])
+    solve2 = np.poly1d(np.array(solve1))
+    solution1 = solve2.roots    
+    for i in range (k):
+        if flag :    # Non-square Matrix 
+            if int(solution1[i].real) > 0 and solution1[i] <= n and isinstance(solution1[i], (int, float)):
+                solution2.append(int(round(solution1[i])))
+        else:
+            if solution1[i] > 0 and solution1[i] <= n and isinstance(solution1[i], (int, float)):
+                solution2.append(int(round(solution1[i])) or "")
+    return solution2, solve2
+
+def Orinignal_fun(matrix1,matrix2,matrix3,matrix4):
+    solve3 = []
+    for i in range (t+k+1):
+        solve3.append(matrix_x[((t+2*k+1)-1)-i][0]) 
+    solve4 = list(P(np.array(solve3))//P(np.array(matrix4)))
+    solve5 = np.poly1d(solve4)
+    for i in range (len(matrix2)):
+        matrix3[matrix2[i]-1] = int(round(solve5(matrix2[i])))
+    return matrix3, solve5
+
+#------------------------------------ Image to Array ----------------------------------#
+def Image2Array(img_party):  
+    
+    img_gray = np.zeros([img_size[0], img_size[1]], dtype='float32')
+    
+    for i in range (img_size[0]):       
+        for j in range(img_size[1]): 
+            img_gray[i][j] = int(img_party[:,:,0][i][j]) + int(img_party[:,:,1][i][j]) + int(img_party[:,:,2][i][j])
+    
+    return img_gray 
+
+# ------------------------------------Main program------------------------------------
+check_n, Flag_Pseudo = True, False
+matrix_A1, matrix_A2, matrix_b1, matrix_x1 = [], [], [], []
+answer, solve1, solution2, solve3, solution3 = [], [], [], [], []
+error_party_check = {}
+t, n = 1, 6                                                           # 次方
+
+print("\n-------------------Start-------------------")        
+
+party1 = cv2.imread('./parties/party1.bmp')  
+party2 = cv2.imread('./parties/party2.bmp')
+party3 = cv2.imread('./parties/party3.bmp')
+party4 = cv2.imread('./parties/party4.bmp')
+party5 = cv2.imread('./parties/party5.bmp')
+party6 = cv2.imread('./parties/party6.bmp')   
+
+print("Image to Array")
+img_size = np.shape(party1)
+party1_gray = Image2Array(party1)  
+party2_gray = Image2Array(party2) 
+party3_gray = Image2Array(party3) 
+party4_gray = Image2Array(party4) 
+party5_gray = Image2Array(party5) 
+party6_gray = Image2Array(party6)  
+
+print("Error Correction\n")
+
+while (check_n):
+    check_n = Check_n(n,t)                                                  # party數(n)
+print("There are {} parties.".format(n))                                  
+
+k = int((n-t-1)/2)
+print("\nThe maximum of the number of error : ",k)                            # 錯誤數量最大值(k_max)  
+
+for i in range (img_size[0]): 
+    if i%100 == 0:
+        print("") 
+    if i%5 == 0:
+        print('=', end = '')
+    for j in range(img_size[1]):  
+        shares = []
+        shares.append(int(party1_gray[i][j]))
+        shares.append(int(party2_gray[i][j]))
+        shares.append(int(party3_gray[i][j]))
+        shares.append(int(party4_gray[i][j]))
+        shares.append(int(party5_gray[i][j]))
+        shares.append(int(party6_gray[i][j]))
+
+        matrix_A = Matrix_A(np.array(shares),k,t,n)                                          # 矩陣A
+        
+        matrix_b = Matrix_b(np.array(shares),k,n)                                            # 矩陣b
+        
+        if t+2*k+1 == n:
+            if abs(np.linalg.det(matrix_A)) < 1e-06:    
+                Augmented_matrix = Matrix(np.hstack((matrix_A,matrix_b))).applyfunc(nsimplify)  
+                rref_matrix = np.array(Augmented_matrix.rref()[0], dtype='int64')
+                matrix_x_1 = Matrix_x_Singular(n,rref_matrix)     
+                matrix_x = Reshape(matrix_x_1)
+            else:
+                matrix_x = Matrix_x(matrix_A,matrix_b)  
+        else:
+            matrix_x = Matrix_x_Pseudo(matrix_A,matrix_b)                           # 解答(矩陣x)
+            Flag_Pseudo = True
+        
+        error_party_temp, fun_e = Solution(matrix_x, Flag_Pseudo)                        # 錯誤的party
+        
+        error_dict = Counter(error_party_temp)
+        for party, count in error_dict.items():
+            if error_party_check.get(party) == None:
+                error_party_check[party] = count
+            else:
+                error_party_check[party] += 1
+        
+        # if len(error_party) == 0:
+        #     print("\nThere is no error in shares.\n")
+        #     shares_corret, fun_org = Orinignal_fun(matrix_x,error_party,shares,fun_e)
+        #     print("\nThe f(x) is : \n",fun_org)
+        # else:
+        #     print("\nThe error party is : ", error_party)
+        #     shares_corret, fun_org = Orinignal_fun(matrix_x,error_party,shares,fun_e)
+        #     print("\nThe correct shares are : ",shares_corret)
+        #     print("\nThe f(x) is : \n",fun_org)
+        
+error_party = []        
+for party, num in error_party_check.items():
+    print("{} : {} ".format(party,num))
+    if num >= img_size[0]*img_size[1]*0.5:
+        error_party.append(party)
+
+if (not error_party) or (len(error_party) == 1 and error_party[0] == 0):
+    print("\nThere is no error in shares.\n")
+else:
+    print("\nThe error party is : ", error_party)
+    
+end_time = time.time()     
+print("")        
+print("Time : ",round(end_time-start_time, 2),"sec")    
+print("\n-------------------END-------------------\n")
+
