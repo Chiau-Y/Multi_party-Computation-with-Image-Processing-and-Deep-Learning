@@ -1,0 +1,11 @@
+import cv2
+import numpy as np
+from matplotlib import pyplot as plt
+from google.colab.patches import cv2_imshow
+
+img = cv2.imread('/content/drive/My Drive/test/34.png', 0)
+
+print("-------------------Test-------------------")
+
+
+cv2_imshow(img)
