@@ -10,23 +10,7 @@ import matplotlib.pyplot as plt
 import Upload_File, Download_File
 from tensorflow.keras import datasets, layers, models
 
-
-import psutil
-import functools
-from threading import Timer
-
 start_time = time.time()
-# ------------------------------------Subroutine------------------------------------
-def hello():
-    global cpu , time_axis   
-    cpu.append(psutil.cpu_percent(interval=0.1))
-    time_axis.append(datetime.utcnow().strftime("%M:%S"))
-    
-class RepeatingTimer(Timer): 
-    def run(self):
-        while not self.finished.is_set():
-            self.function(*self.args, **self.kwargs)
-            self.finished.wait(self.interval)
 #------------------------------------ Distribution ----------------------------------# 
 def Distribution(img):
         
@@ -88,20 +72,14 @@ if __name__ == '__main__':
     error_party_check = {}
     Flag_Pseudo = False
     t, n, num = 1, 6, 100
-    
-    cpu = []
-    time_axis = []
-    t_cpu = RepeatingTimer(1, hello)
-    t_cpu.start()
-    time.sleep(3)
-    
+
     print("=========== Local ===========\n")
     (x_train, y_train), (x_test, y_test) = datasets.cifar10.load_data()
     
     #pretreatment
     x_test_normalize = x_test.astype('float32')/255.0 
     
-    testing_num = 100 #random.randint(0,num)
+    testing_num = random.randint(0,num)
     
     img_size = np.shape (x_test[testing_num])
     
@@ -128,10 +106,15 @@ if __name__ == '__main__':
                           cred_file='credentials_peng01.json',
                           token_file='token_peng01.pickle') 
         
-    print("\n=========== Cloud Computing ===========",end='\n') 
-    
-    time.sleep(20)
-        # pass
+    print("\n=========== Cloud Computing ===========",end='\n')   
+    while(not Download_File.main(is_download_file_function=bool(False), 
+                                  drive_service_folder_name=None, 
+                                  download_drive_service_name='Party'+str(n)+'_dp_Complete.npy', 
+                                  download_file_path=os.getcwd() + '/download/',
+                                  cred_download_file='credentials_peng01.json',
+                                  token_download_file='token_download_peng01.pickle',
+                                  time_now=time_now_utc)):
+        pass
     
     print("\n=========== Local ===========",end='\n\n') 
     print("Download the file to Cloud") 
@@ -160,15 +143,7 @@ if __name__ == '__main__':
     prob_rec_softmax = softmax(prob_rec)
     
     predicted_label_rec = np.argmax(prob_rec_softmax) # 找最大的機率
-    time.sleep(3)
-    t_cpu.cancel() 
     
-    plt.figure(20)
-    plt.plot(time_axis,cpu, label='CPU')
-    plt.ylabel('CPU%')
-    plt.ylim(0,100)
-    plt.xticks(rotation=45)
-    plt.show()         
     # show image
     class_name = ['airplane', 'automobile', 'bird', 'cat', 'deer','dog', 'frog', 'horse', 'ship', 'truck'] 
           
@@ -191,7 +166,3 @@ print("")
 print("總共花費時間 : ",round(end_time-start_time, 2),"sec")       
           
 
-data = []
-data.append(cpu)
-data.append(time_axis)
-np.save('CP_cpu_2', data)

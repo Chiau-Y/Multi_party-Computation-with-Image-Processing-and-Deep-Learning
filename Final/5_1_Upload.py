@@ -62,7 +62,6 @@ def search_file(service, update_drive_service_name, is_delete_search_file=False)
     items = results.get('files', [])
     if not items:
         # print('沒有發現你要找尋的 ' + update_drive_service_name + ' 檔案.')
-        pass
     else:
         # print('搜尋的檔案: ')
         for item in items:
