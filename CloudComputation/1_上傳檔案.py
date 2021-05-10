@@ -1,13 +1,18 @@
 from __future__ import print_function
-import time
 import pickle
 import os.path
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
-from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
 
-# Reference : https://gist.github.com/e96031413/8f69b11833794fa3c689918c5734911b
+from googleapiclient.http import MediaFileUpload
+import numpy as np
+import random
+import time
+import cv2
+
+start_time = time.time()
+
 
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/drive']
@@ -25,11 +30,11 @@ def update_file(service, update_drive_service_name, local_file_path, update_driv
     :param local_file_path: 本地端的位置
     :param local_file_name: 本地端的檔案名稱
     """
-    # print("正在上傳檔案...")
+    print("正在上傳檔案...")
     if update_drive_service_folder_id is None:
         file_metadata = {'name': update_drive_service_name}
     else:
-        # print(update_drive_service_folder_id)
+        print(update_drive_service_folder_id)
         file_metadata = {'name': update_drive_service_name,
                          'parents': update_drive_service_folder_id}
 
@@ -38,11 +43,11 @@ def update_file(service, update_drive_service_name, local_file_path, update_driv
     start = time.time()
     file_id = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
     end = time.time()
-    # print("上傳檔案成功！")
-    # print('雲端檔案名稱為: ' + str(file_metadata['name']))
-    # print('雲端檔案ID為: ' + str(file_id['id']))
-    # print('檔案大小為: ' + str(file_metadata_size) + ' byte')
-    # print("上傳時間為: " + str(end-start))
+    print("上傳檔案成功！")
+    print('雲端檔案名稱為: ' + str(file_metadata['name']))
+    print('雲端檔案ID為: ' + str(file_id['id']))
+    print('檔案大小為: ' + str(file_metadata_size) + ' byte')
+    print("上傳時間為: " + str(end-start))
 
     return file_metadata['name'], file_id['id']
 
@@ -61,16 +66,16 @@ def search_file(service, update_drive_service_name, is_delete_search_file=False)
                                    q="name = '" + update_drive_service_name + "' and trashed = false").execute()
     items = results.get('files', [])
     if not items:
-        # print('沒有發現你要找尋的 ' + update_drive_service_name + ' 檔案.')
+        print('沒有發現你要找尋的 ' + update_drive_service_name + ' 檔案.')
     else:
-        # print('搜尋的檔案: ')
+        print('搜尋的檔案: ')
         for item in items:
             times = 1
-            # print(u'{0} ({1})'.format(item['name'], item['id']))
+            print(u'{0} ({1})'.format(item['name'], item['id']))
             if is_delete_search_file is True:
-                # print("刪除檔案為:" + u'{0} ({1})'.format(item['name'], item['id']))
+                print("刪除檔案為:" + u'{0} ({1})'.format(item['name'], item['id']))
                 delete_drive_service_file(service, file_id=item['id'])
-    
+
             if times == len(items):
                 return item['id']
             else:
@@ -86,7 +91,7 @@ def search_folder(service, update_drive_folder_name=None):
     :return:
     """
     get_folder_id_list = []
-    # print(len(get_folder_id_list))
+    print(len(get_folder_id_list))
     if update_drive_folder_name is not None:
         response = service.files().list(fields="nextPageToken, files(id, name)", spaces='drive',
                                         q = "name = '" + update_drive_folder_name +
@@ -127,10 +132,11 @@ def main(is_update_file_function=False, update_drive_service_folder_name=None,
 
     service = build('drive', 'v3', credentials=creds)
 
+    print('*' * 10)
 
     if is_update_file_function is True:
-        # print(update_file_path + update_drive_service_name)
-        # print("=====執行上傳檔案=====")
+        print(update_file_path + update_drive_service_name)
+        print("=====執行上傳檔案=====")
         get_folder_id = search_folder(service = service, update_drive_folder_name = update_drive_service_folder_name)
         # 搜尋要上傳的檔案名稱是否有在雲端上並且刪除
         search_file(service=service, update_drive_service_name=update_drive_service_name,is_delete_search_file=True)
@@ -138,6 +144,50 @@ def main(is_update_file_function=False, update_drive_service_folder_name=None,
         # 檔案上傳到雲端上
         update_file(service=service, update_drive_service_name=update_drive_service_name,
                     local_file_path=os.getcwd() + '/' + update_drive_service_name, update_drive_service_folder_id=get_folder_id)
-        # print("=====上傳檔案完成=====")
+        print("=====上傳檔案完成=====")
 
+#------------------------------------ Distribution ----------------------------------# 
+def Distribution(img):
         
+    img_party_result = np.zeros((6,img.shape[0]+ 2, img.shape[1]+ 2))
+    
+    img_2 = cv2.copyMakeBorder(img,1,1,1,1,cv2.BORDER_REPLICATE)        # padding 
+    
+    for i in range (img_size[0] + 2):       
+        for j in range(img_size[1] + 2):
+            random_num = random.randint(-400,400)
+            img_party_result[0][i][j] = (img_2[i][j] + random_num * 1) % 33292801
+            img_party_result[1][i][j] = (img_2[i][j] + random_num * 2) % 33292801
+            img_party_result[2][i][j] = (img_2[i][j] + random_num * 3) % 33292801
+            img_party_result[3][i][j] = (img_2[i][j] + random_num * 4) % 33292801
+            img_party_result[4][i][j] = (img_2[i][j] + random_num * 5) % 33292801
+            img_party_result[5][i][j] = (img_2[i][j] + random_num * 6) % 33292801
+            
+            
+    return img_party_result
+        
+#------------------------------------  Main ----------------------------------#
+if __name__ == '__main__':
+    img_original = cv2.imread('D:/Master_2019_2021/Muti_Party_Computation/python/image/test_01.bmp',0) 
+    img_size = np.shape (img_original)
+
+    print("Distributon")
+    img_party = Distribution(img_original)   
+    np.save('Party1', img_party[0])
+    np.save('Party2', img_party[1])
+    np.save('Party3', img_party[2]) 
+    np.save('Party4', img_party[3]) 
+    np.save('Party5', img_party[4]) 
+    np.save('Party6', img_party[5]) 
+      
+    cred_token_party = ['peng01','peng03','peng05','chen03','chen16','chen21']
+    
+    for num in range (6):   
+        print("--------Upload the file to Party{}--------".format(num+1))
+        main(is_update_file_function=bool(True), update_drive_service_folder_name = 'New',
+              update_drive_service_name='Party'+str(num+1)+'.npy', update_file_path=os.getcwd() + './',
+              cred_file='credentials_'+cred_token_party[num]+'.json',token_file='token_'+cred_token_party[num]+'.pickle')
+
+
+end_time = time.time()            
+print("Time : ",round(end_time-start_time, 2),"sec")            
